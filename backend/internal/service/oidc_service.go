@@ -827,7 +827,11 @@ func updateOIDCClientModelFromDto(client *model.OidcClient, input *dto.OidcClien
 	client.RequiresReauthentication = input.RequiresReauthentication
 	client.LaunchURL = input.LaunchURL
 	client.IsGroupRestricted = input.IsGroupRestricted
-	client.Visibility = input.Visibility
+	if input.Visibility == "" {
+		client.Visibility = "permission"
+	} else {
+		client.Visibility = input.Visibility
+	}
 
 	// Credentials
 	client.Credentials.FederatedIdentities = make([]model.OidcClientFederatedIdentity, len(input.Credentials.FederatedIdentities))
