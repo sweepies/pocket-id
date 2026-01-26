@@ -2,6 +2,8 @@
 	import FormInput from '$lib/components/form/form-input.svelte';
 	import SwitchWithLabel from '$lib/components/form/switch-with-label.svelte';
 	import { Button } from '$lib/components/ui/button';
+	import * as Field from '$lib/components/ui/field';
+	import * as Select from '$lib/components/ui/select';
 	import * as Tabs from '$lib/components/ui/tabs';
 	import { m } from '$lib/paraglide/messages';
 	import type {
@@ -32,6 +34,7 @@
 	} = $props();
 	let isLoading = $state(false);
 	let showAdvancedOptions = $state(false);
+	let visibility = $state<'shown' | 'hidden' | 'permission'>(existingClient?.visibility || 'permission');
 	let logo = $state<File | null | undefined>();
 	let darkLogo = $state<File | null | undefined>();
 	let logoDataURL: string | null = $state(
@@ -103,7 +106,8 @@
 			logoUrl: $inputs.logoUrl?.value,
 			darkLogo: $inputs.darkLogoUrl?.value ? undefined : darkLogo,
 			darkLogoUrl: $inputs.darkLogoUrl?.value,
-			isGroupRestricted: existingClient?.isGroupRestricted ?? true
+			isGroupRestricted: existingClient?.isGroupRestricted ?? true,
+			visibility
 		});
 
 		const hasLogo = logo != null || !!$inputs.logoUrl?.value;
@@ -222,6 +226,51 @@
 			description={m.requires_users_to_authenticate_again_on_each_authorization()}
 			bind:checked={$inputs.requiresReauthentication.value}
 		/>
+		<Field.Field>
+			<Field.Label for="visibility">{m.visibility()}</Field.Label>
+			<Field.Description>
+				{m.visibility_description()}
+			</Field.Description>
+			<Select.Root
+				type="single"
+				value={visibility}
+				onValueChange={(v) => (visibility = v as typeof visibility)}
+			>
+				<Select.Trigger id="visibility" class="w-full" aria-label={m.visibility()}>
+					{visibility === 'shown'
+						? m.visibility_shown()
+						: visibility === 'hidden'
+							? m.visibility_hidden()
+							: m.visibility_permission()}
+				</Select.Trigger>
+				<Select.Content>
+					<Select.Item value="permission">
+						<div class="flex flex-col items-start gap-1">
+							<span class="font-medium">{m.visibility_permission()}</span>
+							<span class="text-muted-foreground text-xs">
+								{m.visibility_permission_description()}
+							</span>
+						</div>
+					</Select.Item>
+					<Select.Item value="shown">
+						<div class="flex flex-col items-start gap-1">
+							<span class="font-medium">{m.visibility_shown()}</span>
+							<span class="text-muted-foreground text-xs">
+								{m.visibility_shown_description()}
+							</span>
+						</div>
+					</Select.Item>
+					<Select.Item value="hidden">
+						<div class="flex flex-col items-start gap-1">
+							<span class="font-medium">{m.visibility_hidden()}</span>
+							<span class="text-muted-foreground text-xs">
+								{m.visibility_hidden_description()}
+							</span>
+						</div>
+					</Select.Item>
+				</Select.Content>
+			</Select.Root>
+		</Field.Field>
 	</div>
 	<div class="mt-7 w-full md:w-1/2">
 		<Tabs.Root value="light-logo">
