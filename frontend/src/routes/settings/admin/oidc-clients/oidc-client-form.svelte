@@ -237,7 +237,7 @@
 			<Select.Root
 				type="single"
 				value={visibility}
-				onValueChange={(v) => (visibility = v as typeof visibility)}
+				onValueChange={(v) => v && (visibility = v as typeof visibility)}
 			>
 				<Select.Trigger id="visibility" class="w-full" aria-label={m.visibility()}>
 					{visibility === 'shown'
