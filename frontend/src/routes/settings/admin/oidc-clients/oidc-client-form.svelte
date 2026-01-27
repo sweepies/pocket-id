@@ -121,7 +121,10 @@
 			}
 		}
 
-		if (success && !existingClient) form.reset();
+		if (success && !existingClient) {
+			form.reset();
+			visibility = 'permission';
+		}
 		isLoading = false;
 	}
 
