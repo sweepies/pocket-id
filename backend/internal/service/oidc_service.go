@@ -1507,24 +1507,19 @@ func (s *OidcService) ListAccessibleOidcClients(ctx context.Context, userID stri
 	// Filter by visibility - never show hidden clients
 	query = query.Where("visibility != ?", "hidden")
 
-	// For 'shown' visibility, always include. For 'permission', apply group restrictions
+	// For 'shown' visibility, always include.
+	// For 'permission', only show if user is in one of the allowed groups.
+	// If no groups are assigned to a 'permission' client, it's not visible to anyone.
 	if len(userGroupIDs) == 0 {
-		query = query.Where(`
-			visibility = 'shown' OR 
-			(visibility = 'permission' AND NOT EXISTS (
-				SELECT 1 FROM oidc_clients_allowed_user_groups 
-				WHERE oidc_clients_allowed_user_groups.oidc_client_id = oidc_clients.id))`)
+		// User has no groups, so 'permission' clients are never visible to them
+		query = query.Where(`visibility = 'shown'`)
 	} else {
 		query = query.Where(`
 			visibility = 'shown' OR 
-			(visibility = 'permission' AND (
-				NOT EXISTS (
-					SELECT 1 FROM oidc_clients_allowed_user_groups 
-					WHERE oidc_clients_allowed_user_groups.oidc_client_id = oidc_clients.id
-				) OR EXISTS (
-					SELECT 1 FROM oidc_clients_allowed_user_groups 
-					WHERE oidc_clients_allowed_user_groups.oidc_client_id = oidc_clients.id 
-					AND oidc_clients_allowed_user_groups.user_group_id IN (?))))`, userGroupIDs)
+			(visibility = 'permission' AND EXISTS (
+				SELECT 1 FROM oidc_clients_allowed_user_groups 
+				WHERE oidc_clients_allowed_user_groups.oidc_client_id = oidc_clients.id 
+				AND oidc_clients_allowed_user_groups.user_group_id IN (?)))`, userGroupIDs)
 	}
 
 	var clients []model.OidcClient
