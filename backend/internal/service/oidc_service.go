@@ -827,6 +827,11 @@ func updateOIDCClientModelFromDto(client *model.OidcClient, input *dto.OidcClien
 	client.RequiresReauthentication = input.RequiresReauthentication
 	client.LaunchURL = input.LaunchURL
 	client.IsGroupRestricted = input.IsGroupRestricted
+	if input.Visibility == "" {
+		client.Visibility = "permission"
+	} else {
+		client.Visibility = input.Visibility
+	}
 
 	// Credentials
 	client.Credentials.FederatedIdentities = make([]model.OidcClientFederatedIdentity, len(input.Credentials.FederatedIdentities))
@@ -1499,20 +1504,22 @@ func (s *OidcService) ListAccessibleOidcClients(ctx context.Context, userID stri
 		Model(&model.OidcClient{}).
 		Preload("UserAuthorizedOidcClients", "user_id = ?", userID)
 
-	// If user has no groups, only return clients with no allowed user groups
+	// Filter by visibility - never show hidden clients
+	query = query.Where("visibility != ?", "hidden")
+
+	// For 'shown' visibility, always include.
+	// For 'permission', only show if user is in one of the allowed groups.
+	// If no groups are assigned to a 'permission' client, it's not visible to anyone.
 	if len(userGroupIDs) == 0 {
-		query = query.Where(`NOT EXISTS (
-        SELECT 1 FROM oidc_clients_allowed_user_groups 
-        WHERE oidc_clients_allowed_user_groups.oidc_client_id = oidc_clients.id)`)
+		// User has no groups, so 'permission' clients are never visible to them
+		query = query.Where(`visibility = 'shown'`)
 	} else {
 		query = query.Where(`
-        NOT EXISTS (
-            SELECT 1 FROM oidc_clients_allowed_user_groups 
-            WHERE oidc_clients_allowed_user_groups.oidc_client_id = oidc_clients.id
-        ) OR EXISTS (
-            SELECT 1 FROM oidc_clients_allowed_user_groups 
-            WHERE oidc_clients_allowed_user_groups.oidc_client_id = oidc_clients.id 
-            AND oidc_clients_allowed_user_groups.user_group_id IN (?))`, userGroupIDs)
+			visibility = 'shown' OR 
+			(visibility = 'permission' AND EXISTS (
+				SELECT 1 FROM oidc_clients_allowed_user_groups 
+				WHERE oidc_clients_allowed_user_groups.oidc_client_id = oidc_clients.id 
+				AND oidc_clients_allowed_user_groups.user_group_id IN (?)))`, userGroupIDs)
 	}
 
 	var clients []model.OidcClient
